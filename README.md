@@ -1,7 +1,8 @@
-# RandomPlus
+# RandomPlusPlus
 A Rimworld mod for auto rerolling pawns to match a user set specification.
 
 ![Main Image](./Resources/About/main.png)
 
 ## Credits
+* __RandomPlus__ for mod's base version forked from [RandomPlus mod](https://github.com/mastertea/RandomPlus)
 * __edbmods__ for UI code and assets forked from [EdBPrepareCarefully mod](https://github.com/edbmods/EdBPrepareCarefully)
