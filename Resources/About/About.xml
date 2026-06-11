@@ -14,7 +14,12 @@
 	<description>
 Allow users to set minimum specifications for pawn generation when using the randomize button. It will keep rerolling until the minimum specification is met or it passes the max reroll limit.
 
-Updated for RimWorld 1.6 with improved compatibility and performance. Added UltraFast mode and several improvements.
+Updated for RimWorld 1.6 with improved compatibility and performance. Added UltraFast mode and several improvements. Right clicking would cancel the iteration immediately and gracefully, useful for cancelling higher rerolls like 1B.
+
+Known issue: If you change the window (i.e. with Alt+Tab) while having a high amount of rerolls (like 1B), the game freezes. Just right click to cancel the iteration and avoid freezing before pressing Alt+Tab.
+
+Source code:
+https://github.com/hsariaslan/RandomPlusPlus
 	</description>
 	<modDependencies>
 		<li>
