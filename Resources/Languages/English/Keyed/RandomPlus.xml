@@ -32,7 +32,8 @@
 	<RandomPlus.PanelOthers.RerollAlgorithmLabel>Reroll Algorithm:</RandomPlus.PanelOthers.RerollAlgorithmLabel>
 	<RandomPlus.PanelOthers.RerollAlgorithmOptionValues.Normal>Normal</RandomPlus.PanelOthers.RerollAlgorithmOptionValues.Normal>
 	<RandomPlus.PanelOthers.RerollAlgorithmOptionValues.Fast>Fast (Beta)</RandomPlus.PanelOthers.RerollAlgorithmOptionValues.Fast>
-	
+	<RandomPlus.PanelOthers.RerollAlgorithmOptionValues.UltraFast>Ultra Fast</RandomPlus.PanelOthers.RerollAlgorithmOptionValues.UltraFast>
+
 	<RandomPlus.PanelOthers.RerollLimitLabel>Reroll Limit:</RandomPlus.PanelOthers.RerollLimitLabel>
 	<RandomPlus.PanelOthers.GenderLabel>Gender Filter:</RandomPlus.PanelOthers.GenderLabel>
 	
@@ -48,6 +49,7 @@
 	<RandomPlus.PanelOthers.IncapableOptions.AllowAll>Allow All</RandomPlus.PanelOthers.IncapableOptions.AllowAll>
 	<RandomPlus.PanelOthers.IncapableOptions.NoDumbLabor>No Dumb Labor</RandomPlus.PanelOthers.IncapableOptions.NoDumbLabor>
 	<RandomPlus.PanelOthers.IncapableOptions.AllowNone>Allow None</RandomPlus.PanelOthers.IncapableOptions.AllowNone>
+	<RandomPlus.PanelOthers.IncapableOptions.ForcedViolence>Forced Violence</RandomPlus.PanelOthers.IncapableOptions.ForcedViolence>
 	
 	<RandomPlus.PanelOthers.AgeLabel>Age: {0} - {1}</RandomPlus.PanelOthers.AgeLabel>
 

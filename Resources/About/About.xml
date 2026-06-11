@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <ModMetaData>
-	<packageId>mastertea.RandomPlus</packageId>
-	<name>RandomPlus</name>
-	<author>mastertea</author>
+	<packageId>hakan.randomplusplus</packageId>
+	<name>RandomPlusPlus</name>
+	<author>hsariaslan</author>
 	<url>https://github.com/mastertea/RandomPlus</url>
 	<supportedVersions>
 		<li>1.6</li>

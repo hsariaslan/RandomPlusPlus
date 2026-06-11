@@ -53,3 +53,6 @@ Source/BetterAnimalsTab/obj/Debug/BetterAnimalsTab.pdb
 # EditPlus backup files
 *.bak
 
+CLAUDE.md
+.claude
+nul

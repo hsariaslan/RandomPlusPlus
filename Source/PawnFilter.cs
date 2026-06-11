@@ -17,10 +17,11 @@ namespace RandomPlus
         public static readonly int MaxAgeDefault = 120;
 
         public static readonly int DefaultPoolSize = 0;
-        public enum RerollAlgorithmOptions { Normal, Fast }
+        public enum RerollAlgorithmOptions { Normal, Fast, UltraFast }
         public readonly static string[] _RerollAlgorithmOptionValues = new string[] {
             "RandomPlus.PanelOthers.RerollAlgorithmOptionValues.Normal",
-            "RandomPlus.PanelOthers.RerollAlgorithmOptionValues.Fast", 
+            "RandomPlus.PanelOthers.RerollAlgorithmOptionValues.Fast",
+            "RandomPlus.PanelOthers.RerollAlgorithmOptionValues.UltraFast",
         };
         public static string[] RerollAlgorithmOptionValues { 
             get {
@@ -40,8 +41,8 @@ namespace RandomPlus
             }
         } 
 
-        public enum RerollLimitOptions { N100 = 100, N250 = 250, N500 = 500, N1000 = 1000, N2500 = 2500, N5000 = 5000, N10000 = 10000, N50000 = 50000 }
-        public readonly static string[] RerollLimitOptionValues = new string[] { "100", "250", "500", "1000", "2500", "5000", "10000", "50000" };
+        public enum RerollLimitOptions { N100 = 100, N250 = 250, N500 = 500, N1000 = 1000, N2500 = 2500, N5000 = 5000, N10000 = 10000, N50000 = 50000, N100000 = 100000, N500000 = 500000, N1000000 = 1000000, N10000000 = 10000000, N20000000 = 20000000, N50000000 = 50000000, N100000000 = 100000000, N1000000000 = 1000000000 }
+        public readonly static string[] RerollLimitOptionValues = new string[] { "100", "250", "500", "1000", "2500", "5000", "10000", "50000", "100000", "500000", "1000000", "10000000", "20000000", "50000000", "100M", "1B" };
         public static readonly RerollLimitOptions DefaultRerollLimit = RerollLimitOptions.N1000;
 
         public enum HealthOptions { AllowAll, OnlyStartCondition, NoPain, NoAddiction, AllowNone, 
@@ -56,11 +57,12 @@ namespace RandomPlus
             //"RandomPlus.PanelOthers.HealthOptions.OnlyPositiveImplants",
         };
 
-        public enum IncapableOptions { AllowAll, NoDumbLabor, AllowNone }
+        public enum IncapableOptions { AllowAll, NoDumbLabor, AllowNone, ForcedViolence }
         public readonly static string[] IncapableOptionValues = new string[] {
             "RandomPlus.PanelOthers.IncapableOptions.AllowAll",
             "RandomPlus.PanelOthers.IncapableOptions.NoDumbLabor",
-            "RandomPlus.PanelOthers.IncapableOptions.AllowNone"
+            "RandomPlus.PanelOthers.IncapableOptions.AllowNone",
+            "RandomPlus.PanelOthers.IncapableOptions.ForcedViolence"
         };
 
         public string name;

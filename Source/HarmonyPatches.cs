@@ -18,6 +18,32 @@ namespace RandomPlus
         {
             var harmony = new Harmony("RandomPlus");
             harmony.PatchAll(Assembly.GetExecutingAssembly());
+
+            // Ultra Fast: skip name generation + solid bio search during hot loop
+            try
+            {
+                var namePrefix = new HarmonyMethod(typeof(Patch_SkipNameGeneration)
+                    .GetMethod("Prefix", BindingFlags.Static | BindingFlags.NonPublic));
+                foreach (var m in typeof(PawnBioAndNameGenerator)
+                    .GetMethods(BindingFlags.Public | BindingFlags.Static)
+                    .Where(m => m.Name == "GeneratePawnName"))
+                {
+                    harmony.Patch(m, prefix: namePrefix);
+                }
+
+                var solidPrefix = new HarmonyMethod(typeof(Patch_SkipSolidBio)
+                    .GetMethod("Prefix", BindingFlags.Static | BindingFlags.NonPublic));
+                foreach (var m in typeof(PawnBioAndNameGenerator)
+                    .GetMethods(BindingFlags.NonPublic | BindingFlags.Static)
+                    .Where(m => m.Name == "TryGiveSolidBioTo"))
+                {
+                    harmony.Patch(m, prefix: solidPrefix);
+                }
+            }
+            catch (Exception ex)
+            {
+                Log.Message($"RandomPlus: Optional Ultra Fast name-skip patches: {ex.Message}");
+            }
         }
     }
 
@@ -42,14 +68,17 @@ namespace RandomPlus
                 return false;
             
             RandomSettings.ResetRerollCounter();
-            
+            RandomSettings.RerollCancelledByUser = false;
+
             int num = 0;
             do
             {
                 RandomSettings.Reroll(pawnIndex);
                 num++;
             }
-            while (num <= 20 && !StartingPawnUtility.WorkTypeRequirementsSatisfied());
+            while (num <= 20
+                && !StartingPawnUtility.WorkTypeRequirementsSatisfied()
+                && !RandomSettings.RerollCancelledByUser);
             
             TutorSystem.Notify_Event((EventPack)nameof(StartingPawnUtility.RandomizePawn));
 
@@ -239,6 +268,39 @@ namespace RandomPlus
             {
                 Log.Error($"RandomPlus: Failed to launch quick config page: {ex.Message}");
             }
+        }
+    }
+
+    // Ultra Fast: skip name generation during hot loop (returns cached dummy name)
+    class Patch_SkipNameGeneration
+    {
+        public static bool active = false;
+        private static Name _dummyName;
+
+        static bool Prefix(ref Name __result)
+        {
+            if (active)
+            {
+                if (_dummyName == null)
+                    _dummyName = new NameTriple("X", "X", "X");
+                __result = _dummyName;
+                return false;
+            }
+            return true;
+        }
+    }
+
+    // Ultra Fast: skip solid bio database search (always use shuffled backstory)
+    class Patch_SkipSolidBio
+    {
+        static bool Prefix(ref bool __result)
+        {
+            if (Patch_SkipNameGeneration.active)
+            {
+                __result = false;
+                return false;
+            }
+            return true;
         }
     }
 }
