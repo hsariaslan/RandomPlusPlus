@@ -2,26 +2,53 @@
 <LanguageData>
   <RandomPlus.RandomEditor.Header>Random Editor</RandomPlus.RandomEditor.Header>
   <RandomPlus.RandomEditor.ResetAllButton>Reset All</RandomPlus.RandomEditor.ResetAllButton>
+  <RandomPlus.RandomEditor.ResetAllConfirmation>Reset all RandomPlusPlus filters?</RandomPlus.RandomEditor.ResetAllConfirmation>
+  <RandomPlus.RandomEditor.CloseWithWarningConfirmation>There are active RandomPlusPlus warnings. Close anyway?</RandomPlus.RandomEditor.CloseWithWarningConfirmation>
+  <RandomPlus.RandomEditor.CloseWithWarningCancelHint>You can cancel rerolling at any time with right click.</RandomPlus.RandomEditor.CloseWithWarningCancelHint>
   <RandomPlus.RandomEditor.SaveLoadButton>Save/Load</RandomPlus.RandomEditor.SaveLoadButton>
   
   <RandomPlus.SaveLoadDialog.SaveButton>Save</RandomPlus.SaveLoadDialog.SaveButton>
   <RandomPlus.SaveLoadDialog.OverwriteButton>Overwrite</RandomPlus.SaveLoadDialog.OverwriteButton>
   <RandomPlus.SaveLoadDialog.LoadButton>Load</RandomPlus.SaveLoadDialog.LoadButton>
   <RandomPlus.SaveLoadDialog.DeleteButton>Delete</RandomPlus.SaveLoadDialog.DeleteButton>
+  <RandomPlus.SaveLoadDialog.OverwriteConfirmation>Overwrite save '{0}'?</RandomPlus.SaveLoadDialog.OverwriteConfirmation>
+  <RandomPlus.SaveLoadDialog.DeleteConfirmation>Delete save '{0}'?</RandomPlus.SaveLoadDialog.DeleteConfirmation>
   
   <RandomPlus.FilterButton>Filter</RandomPlus.FilterButton>
   <RandomPlus.RerollLabel>Rerolls: </RandomPlus.RerollLabel>
+  <RandomPlus.TimeElapsedLabel>Time elapsed: </RandomPlus.TimeElapsedLabel>
+  <RandomPlus.RandomizingStatusLabel>Randomizing... (Right click to cancel)</RandomPlus.RandomizingStatusLabel>
+  <RandomPlus.RandomizingStatusMainLabel>Randomizing...</RandomPlus.RandomizingStatusMainLabel>
+  <RandomPlus.RandomizingStatusCancelHint>(Right click to cancel)</RandomPlus.RandomizingStatusCancelHint>
   
 	<RandomPlus.PanelSkills.Header>Minimum Skill Level</RandomPlus.PanelSkills.Header>
 	<RandomPlus.PanelSkills.PassionSlider>Passion Range: {0} - {1}</RandomPlus.PanelSkills.PassionSlider>
 	<RandomPlus.PanelSkills.SkillSlider>Skill Range: {0} - {1}</RandomPlus.PanelSkills.SkillSlider>
 	<RandomPlus.PanelSkills.CountOnlyHighestAttack>Count Only Highest Attack:</RandomPlus.PanelSkills.CountOnlyHighestAttack>
 	<RandomPlus.PanelSkills.CountOnlyPassion>Count Only Skills With Passion:</RandomPlus.PanelSkills.CountOnlyPassion>
+	<RandomPlus.PanelSkills.ResetConfirmation>Reset all skill filters?</RandomPlus.PanelSkills.ResetConfirmation>
 	
 	<RandomPlus.PanelTraits.Header>Filter Traits</RandomPlus.PanelTraits.Header>
+	<RandomPlus.PanelTraits.WhitelistHeader>Whitelist</RandomPlus.PanelTraits.WhitelistHeader>
+	<RandomPlus.PanelTraits.BlacklistHeader>Blacklist</RandomPlus.PanelTraits.BlacklistHeader>
 	<RandomPlus.PanelTraits.NoTraits>No Traits</RandomPlus.PanelTraits.NoTraits>
+	<RandomPlus.PanelTraits.NoWhitelist>No Whitelisted Traits</RandomPlus.PanelTraits.NoWhitelist>
+	<RandomPlus.PanelTraits.NoBlacklist>No Blacklisted Traits</RandomPlus.PanelTraits.NoBlacklist>
 	<RandomPlus.PanelTraits.AddDialog.AddButton>Add</RandomPlus.PanelTraits.AddDialog.AddButton>
+	<RandomPlus.PanelTraits.ClearWhitelistConfirmation>Clear all whitelist traits?</RandomPlus.PanelTraits.ClearWhitelistConfirmation>
+	<RandomPlus.PanelTraits.ClearBlacklistConfirmation>Clear all blacklist traits?</RandomPlus.PanelTraits.ClearBlacklistConfirmation>
+	<RandomPlus.PanelTraits.MultiSelect.Title>Select Traits</RandomPlus.PanelTraits.MultiSelect.Title>
+	<RandomPlus.PanelTraits.MultiSelect.WhitelistTitle>Select Whitelist Traits</RandomPlus.PanelTraits.MultiSelect.WhitelistTitle>
+	<RandomPlus.PanelTraits.MultiSelect.BlacklistTitle>Select Blacklist Traits</RandomPlus.PanelTraits.MultiSelect.BlacklistTitle>
+	<RandomPlus.PanelTraits.MultiSelect.SelectAll>Select All</RandomPlus.PanelTraits.MultiSelect.SelectAll>
 	<RandomPlus.PanelTraits.PoolLabel>Required Traits In Pool: </RandomPlus.PanelTraits.PoolLabel>
+	<RandomPlus.PanelTraits.Warning.TraitLimit>Pawn trait limit warning: humans normally have at most 3 non-sexual traits, plus at most 1 extra sexuality trait (Asexual, Bisexual, or Gay).</RandomPlus.PanelTraits.Warning.TraitLimit>
+	<RandomPlus.PanelTraits.Warning.AllTraitsBlacklisted>All traits are blacklisted. Adult pawns must have at least 1 trait, so this can only match children or babies that generate with zero traits.</RandomPlus.PanelTraits.Warning.AllTraitsBlacklisted>
+	<RandomPlus.PanelTraits.Warning.RequiredNonSexualLimit>Move at least {0} required non-sexual trait(s) to Pool using the toggle icon.</RandomPlus.PanelTraits.Warning.RequiredNonSexualLimit>
+	<RandomPlus.PanelTraits.Warning.RequiredSexualLimit>Only one sexuality trait can be required. Move extra sexuality traits to Pool or remove them.</RandomPlus.PanelTraits.Warning.RequiredSexualLimit>
+	<RandomPlus.PanelTraits.Warning.PoolHasNoAvailableSlots>Pool traits are selected, but the current required traits leave no room for any pool trait. Move more required traits to Pool or include a pool sexuality trait.</RandomPlus.PanelTraits.Warning.PoolHasNoAvailableSlots>
+	<RandomPlus.PanelTraits.Warning.PoolCountZero>Pool traits are selected, but Required Traits In Pool is 0. Set it above 0 or pool traits will not be required.</RandomPlus.PanelTraits.Warning.PoolCountZero>
+	<RandomPlus.PanelTraits.Warning.PoolCountTooHigh>Required Traits In Pool is {0}, but the current required traits leave room for at most {1} pool trait(s).</RandomPlus.PanelTraits.Warning.PoolCountTooHigh>
 	<RandomPlus.PanelTraits.FilterType.Required> (Req)</RandomPlus.PanelTraits.FilterType.Required>
 	<RandomPlus.PanelTraits.FilterType.Pool> (Pool)</RandomPlus.PanelTraits.FilterType.Pool>
 	<RandomPlus.PanelTraits.FilterType.Excluded> (Excl)</RandomPlus.PanelTraits.FilterType.Excluded>
@@ -43,18 +70,63 @@
 	<RandomPlus.PanelOthers.HealthOptions.NoPain>No Pain</RandomPlus.PanelOthers.HealthOptions.NoPain>
 	<RandomPlus.PanelOthers.HealthOptions.NoAddiction>No Addiction</RandomPlus.PanelOthers.HealthOptions.NoAddiction>
 	<RandomPlus.PanelOthers.HealthOptions.AllowNone>Allow None</RandomPlus.PanelOthers.HealthOptions.AllowNone>
+	<RandomPlus.PanelOthers.HealthOptions.Custom>Custom</RandomPlus.PanelOthers.HealthOptions.Custom>
+	<RandomPlus.PanelOthers.HealthOptions.CustomWithCount>Custom ({0})</RandomPlus.PanelOthers.HealthOptions.CustomWithCount>
 	<RandomPlus.PanelOthers.HealthOptions.OnlyPositiveImplants>Only Positive Implants</RandomPlus.PanelOthers.HealthOptions.OnlyPositiveImplants>
+	<RandomPlus.PanelOthers.CustomHealth.Title>Allowed Health Conditions</RandomPlus.PanelOthers.CustomHealth.Title>
+	<RandomPlus.PanelOthers.CustomHealth.SelectAll>Select All</RandomPlus.PanelOthers.CustomHealth.SelectAll>
+	<RandomPlus.PanelOthers.CustomHealth.StartConditions>Allow Start Conditions</RandomPlus.PanelOthers.CustomHealth.StartConditions>
+	<RandomPlus.PanelOthers.CustomHealth.Pregnancy>Allow Pregnancy</RandomPlus.PanelOthers.CustomHealth.Pregnancy>
+	<RandomPlus.PanelOthers.CustomHealth.Pain>Allow Pain</RandomPlus.PanelOthers.CustomHealth.Pain>
+	<RandomPlus.PanelOthers.CustomHealth.Scar>Allow Scar</RandomPlus.PanelOthers.CustomHealth.Scar>
+	<RandomPlus.PanelOthers.CustomHealth.Addiction>Allow Addiction</RandomPlus.PanelOthers.CustomHealth.Addiction>
+	<RandomPlus.PanelOthers.CustomHealth.BadModifications>Allow Bad Modifications</RandomPlus.PanelOthers.CustomHealth.BadModifications>
+	<RandomPlus.PanelOthers.CustomHealth.GoodModifications>Allow Good Modifications</RandomPlus.PanelOthers.CustomHealth.GoodModifications>
+	<RandomPlus.PanelOthers.CustomHealth.Others>Allow Others</RandomPlus.PanelOthers.CustomHealth.Others>
 	
 	<RandomPlus.PanelOthers.IncapableOptionLabel>Incapable:</RandomPlus.PanelOthers.IncapableOptionLabel>
 	<RandomPlus.PanelOthers.IncapableOptions.AllowAll>Allow All</RandomPlus.PanelOthers.IncapableOptions.AllowAll>
 	<RandomPlus.PanelOthers.IncapableOptions.NoDumbLabor>No Dumb Labor</RandomPlus.PanelOthers.IncapableOptions.NoDumbLabor>
 	<RandomPlus.PanelOthers.IncapableOptions.AllowNone>Allow None</RandomPlus.PanelOthers.IncapableOptions.AllowNone>
 	<RandomPlus.PanelOthers.IncapableOptions.ForcedViolence>Forced Violence</RandomPlus.PanelOthers.IncapableOptions.ForcedViolence>
+	<RandomPlus.PanelOthers.IncapableOptions.Custom>Custom</RandomPlus.PanelOthers.IncapableOptions.Custom>
+	<RandomPlus.PanelOthers.IncapableOptions.CustomWithCount>Custom ({0})</RandomPlus.PanelOthers.IncapableOptions.CustomWithCount>
+	<RandomPlus.PanelOthers.CustomIncapable.Title>Allowed Incapable Options</RandomPlus.PanelOthers.CustomIncapable.Title>
+	<RandomPlus.PanelOthers.CustomIncapable.SelectAll>Select All</RandomPlus.PanelOthers.CustomIncapable.SelectAll>
+	<RandomPlus.PanelOthers.CustomIncapable.Violent>Violent</RandomPlus.PanelOthers.CustomIncapable.Violent>
+	<RandomPlus.PanelOthers.CustomIncapable.DumbLabor>Dumb Labor</RandomPlus.PanelOthers.CustomIncapable.DumbLabor>
+	<RandomPlus.PanelOthers.CustomIncapable.Firefighting>Firefighting</RandomPlus.PanelOthers.CustomIncapable.Firefighting>
+	<RandomPlus.PanelOthers.CustomIncapable.Cleaning>Cleaning</RandomPlus.PanelOthers.CustomIncapable.Cleaning>
+	<RandomPlus.PanelOthers.CustomIncapable.Hauling>Hauling</RandomPlus.PanelOthers.CustomIncapable.Hauling>
+	<RandomPlus.PanelOthers.CustomIncapable.Childcare>Childcare</RandomPlus.PanelOthers.CustomIncapable.Childcare>
+	<RandomPlus.PanelOthers.ChildhoodBackstoryLabel>Childhood:</RandomPlus.PanelOthers.ChildhoodBackstoryLabel>
+	<RandomPlus.PanelOthers.AdulthoodBackstoryLabel>Adulthood:</RandomPlus.PanelOthers.AdulthoodBackstoryLabel>
+	<RandomPlus.PanelOthers.BackstoryFilter.All>All</RandomPlus.PanelOthers.BackstoryFilter.All>
+	<RandomPlus.PanelOthers.BackstoryFilter.Count>{0}/{1}</RandomPlus.PanelOthers.BackstoryFilter.Count>
+	<RandomPlus.PanelOthers.BackstoryFilter.ChildhoodTitle>Childhood Backstories</RandomPlus.PanelOthers.BackstoryFilter.ChildhoodTitle>
+	<RandomPlus.PanelOthers.BackstoryFilter.AdulthoodTitle>Adulthood Backstories</RandomPlus.PanelOthers.BackstoryFilter.AdulthoodTitle>
+	<RandomPlus.PanelOthers.BackstoryFilter.SelectAll>Select All</RandomPlus.PanelOthers.BackstoryFilter.SelectAll>
+	<RandomPlus.PanelOthers.BackstoryFilter.SearchLabel>Search:</RandomPlus.PanelOthers.BackstoryFilter.SearchLabel>
+	<RandomPlus.PanelOthers.BackstoryFilter.SearchPlaceholder>Search by name or trait</RandomPlus.PanelOthers.BackstoryFilter.SearchPlaceholder>
+	<RandomPlus.PanelOthers.BackstoryFilter.AdvancedSearch>Advanced Search</RandomPlus.PanelOthers.BackstoryFilter.AdvancedSearch>
+	<RandomPlus.PanelOthers.BackstoryFilter.AdvancedSearchWithCount>Advanced Search ({0})</RandomPlus.PanelOthers.BackstoryFilter.AdvancedSearchWithCount>
+	<RandomPlus.PanelOthers.BackstoryFilter.AdvancedSearchTitle>Advanced Backstory Search</RandomPlus.PanelOthers.BackstoryFilter.AdvancedSearchTitle>
+	<RandomPlus.PanelOthers.BackstoryFilter.AdvancedSearchHint>Show backstories with at least these skill gains.</RandomPlus.PanelOthers.BackstoryFilter.AdvancedSearchHint>
+	<RandomPlus.PanelOthers.BackstoryFilter.AnySkillGain>Any</RandomPlus.PanelOthers.BackstoryFilter.AnySkillGain>
+	<RandomPlus.PanelOthers.BackstoryFilter.Warning.Title>Backstory filter warning</RandomPlus.PanelOthers.BackstoryFilter.Warning.Title>
+	<RandomPlus.PanelOthers.BackstoryFilter.Warning.NoChildhood>No childhood backstories are selected. Every pawn has a childhood backstory, including babies with Newborn.</RandomPlus.PanelOthers.BackstoryFilter.Warning.NoChildhood>
+	<RandomPlus.PanelOthers.BackstoryFilter.Warning.NoAdultWithAdultAge>No adulthood backstories are selected while minimum age is 20 or higher. Adult pawns need an adulthood backstory.</RandomPlus.PanelOthers.BackstoryFilter.Warning.NoAdultWithAdultAge>
+	<RandomPlus.PanelOthers.BackstoryFilter.Warning.NoCompatiblePair>The selected childhood and adulthood backstories have no compatible pair because of forced/disallowed trait or required/disabled work conflicts.</RandomPlus.PanelOthers.BackstoryFilter.Warning.NoCompatiblePair>
+	<RandomPlus.PanelOthers.BackstoryFilter.Uncategorized>Any</RandomPlus.PanelOthers.BackstoryFilter.Uncategorized>
+	<RandomPlus.PanelOthers.BackstoryFilter.CategoryDisabledTooltip>This backstory group is not used by the current scenario's pawn generation request.</RandomPlus.PanelOthers.BackstoryFilter.CategoryDisabledTooltip>
 	
 	<RandomPlus.PanelOthers.AgeLabel>Age: {0} - {1}</RandomPlus.PanelOthers.AgeLabel>
 
 	<RandomPlus.Debug.QuickStartButton>Test[RandomPlus]</RandomPlus.Debug.QuickStartButton>
 	
 	<RandomPlus.Dialog.Close>Close</RandomPlus.Dialog.Close>
+	<RandomPlus.Dialog.Cancel>Cancel</RandomPlus.Dialog.Cancel>
+	<RandomPlus.Dialog.Apply>Apply</RandomPlus.Dialog.Apply>
+	<RandomPlus.Dialog.ClearAll>Clear All</RandomPlus.Dialog.ClearAll>
 
 </LanguageData>
