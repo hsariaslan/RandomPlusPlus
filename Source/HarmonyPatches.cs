@@ -66,23 +66,70 @@ namespace RandomPlus
         {
             if (!TutorSystem.AllowAction((EventPack)nameof(StartingPawnUtility.RandomizePawn)))
                 return false;
-            
-            RandomSettings.ResetRerollCounter();
-            RandomSettings.RerollCancelledByUser = false;
 
-            int num = 0;
-            do
-            {
-                RandomSettings.Reroll(pawnIndex);
-                num++;
-            }
-            while (num <= 20
-                && !StartingPawnUtility.WorkTypeRequirementsSatisfied()
-                && !RandomSettings.RerollCancelledByUser);
-            
-            TutorSystem.Notify_Event((EventPack)nameof(StartingPawnUtility.RandomizePawn));
+            if (Find.WindowStack.currentlyDrawnWindow is Page_ConfigureStartingPawns)
+                RandomSettings.QueueReroll(pawnIndex);
+            else
+                RandomSettings.RunRerollImmediately(pawnIndex);
 
             return false;
+        }
+    }
+
+    [HarmonyPatch(typeof(Root), "Update")]
+    class Patch_RunQueuedReroll
+    {
+        [HarmonyPostfix]
+        static void Postfix()
+        {
+            RandomSettings.RunQueuedRerollIfReady();
+        }
+    }
+
+    [HarmonyPatch(typeof(Page_ConfigureStartingPawns), "DoWindowContents")]
+    class Patch_RandomizingStatusLabel
+    {
+        [HarmonyPostfix]
+        static void Postfix(Rect rect)
+        {
+            if (!RandomSettings.IsRerolling())
+                return;
+
+            GameFont previousFont = Text.Font;
+            TextAnchor previousAnchor = Text.Anchor;
+            Color previousColor = GUI.color;
+
+            try
+            {
+                GUI.color = Color.white;
+
+                string mainLabel = "RandomPlus.RandomizingStatusMainLabel".Translate().ToString();
+                string cancelHint = "RandomPlus.RandomizingStatusCancelHint".Translate().ToString();
+
+                Text.Anchor = TextAnchor.UpperLeft;
+                Text.Font = GameFont.Medium;
+                Vector2 mainSize = Text.CalcSize(mainLabel);
+                Text.Font = GameFont.Small;
+                Vector2 hintSize = Text.CalcSize(cancelHint);
+
+                float gap = 6f;
+                float totalWidth = mainSize.x + gap + hintSize.x;
+                float x = (rect.width - totalWidth) * 0.5f;
+
+                Text.Font = GameFont.Medium;
+                Widgets.Label(new Rect(x, 0f, mainSize.x + 4f, 32f), mainLabel);
+                Text.Font = GameFont.Small;
+                Widgets.Label(new Rect(x + mainSize.x + gap, 5f, hintSize.x + 4f, 24f), cancelHint);
+
+                if (Event.current.type == EventType.Repaint)
+                    RandomSettings.NotifyRerollStatusDrawn();
+            }
+            finally
+            {
+                Text.Font = previousFont;
+                Text.Anchor = previousAnchor;
+                GUI.color = previousColor;
+            }
         }
     }
 
@@ -133,7 +180,7 @@ namespace RandomPlus
                 Find.WindowStack.Add(page);
             }
 
-            Rect rerollLabelRect = new Rect(640f * uiScale, 4f * uiScale, 200f * uiScale, 30f * uiScale);
+            Rect rerollLabelRect = new Rect(580f * uiScale, 4f * uiScale, 300f * uiScale, 24f * uiScale);
             if (ModsConfig.IdeologyActive)
                 rerollLabelRect.y += 40f * uiScale;
             if (ModsConfig.BiotechActive)
@@ -143,11 +190,13 @@ namespace RandomPlus
                 RandomSettings.Init();
                 
             string labelText = "RandomPlus.RerollLabel".Translate() + RandomSettings.RandomRerollCounter() + "/" + RandomSettings.PawnFilter.RerollLimit;
+            string elapsedTimeText = "RandomPlus.TimeElapsedLabel".Translate() + RandomSettings.GetElapsedRerollTimeText();
 
             var tmpSave = GUI.color;
             if (RandomSettings.RandomRerollCounter() >= RandomSettings.PawnFilter.RerollLimit)
                 GUI.color = Color.red;
             Widgets.Label(rerollLabelRect, labelText);
+            Widgets.Label(rerollLabelRect.OffsetBy(0, 18f * uiScale), elapsedTimeText);
             GUI.color = tmpSave;
         }
     }
@@ -293,9 +342,11 @@ namespace RandomPlus
     // Ultra Fast: skip solid bio database search (always use shuffled backstory)
     class Patch_SkipSolidBio
     {
+        public static bool active = false;
+
         static bool Prefix(ref bool __result)
         {
-            if (Patch_SkipNameGeneration.active)
+            if (active)
             {
                 __result = false;
                 return false;
