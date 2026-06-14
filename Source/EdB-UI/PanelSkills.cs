@@ -114,7 +114,7 @@ namespace RandomPlus
             if (Widgets.ButtonInvisible(RectButtonClearSkills, false))
             {
                 SoundDefOf.Tick_Low.PlayOneShotOnCamera();
-                RandomSettings.PawnFilter.ResetSkills();
+                ResetSkillsWithConfirmation();
             }
             
             int skillCount = RandomSettings.PawnFilter.Skills.Count();
@@ -363,6 +363,14 @@ namespace RandomPlus
         public void ScrollToTop()
         {
             scrollView.ScrollToTop();
+        }
+
+        private void ResetSkillsWithConfirmation()
+        {
+            Find.WindowStack.Add(Dialog_MessageBox.CreateConfirmation(
+                "RandomPlus.PanelSkills.ResetConfirmation".Translate(),
+                () => RandomSettings.PawnFilter.ResetSkills(),
+                true));
         }
     }
 }

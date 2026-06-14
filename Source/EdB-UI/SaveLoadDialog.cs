@@ -138,8 +138,7 @@ namespace RandomPlus
                 Rect deleteButtonRect = loadButtonRect.OffsetBy(new Vector2(0, buttonSize.y + padding));
                 if (Widgets.ButtonText(deleteButtonRect, "RandomPlus.SaveLoadDialog.DeleteButton".Translate(), true, false, true))
                 {
-                    SaveLoader.Delete(RandomSettings.pawnFilterList[selectedIndex]);
-                    selectedIndex = -1;
+                    DeleteSelectedWithConfirmation();
                 }
 
                 if (selectedIndex == -1)
@@ -196,9 +195,7 @@ namespace RandomPlus
                 }
                 else if (selectedIndex >= 0)
                 {
-                    RandomSettings.PawnFilter.name = text;
-                    SaveLoader.SaveOverwrite(selectedIndex, RandomSettings.PawnFilter);
-                    Close(true);
+                    OverwriteSelectedWithConfirmation(selectedIndex, text);
                 }
                 else
                 {
@@ -210,6 +207,48 @@ namespace RandomPlus
 
             Text.Anchor = TextAnchor.UpperLeft;
             GUI.EndGroup();
+        }
+
+        private void DeleteSelectedWithConfirmation()
+        {
+            if (selectedIndex < 0 || selectedIndex >= RandomSettings.pawnFilterList.Count)
+                return;
+
+            int indexToDelete = selectedIndex;
+            PawnFilter filterToDelete = RandomSettings.pawnFilterList[indexToDelete];
+            string confirmation = string.Format(
+                "RandomPlus.SaveLoadDialog.DeleteConfirmation".Translate().ToString(),
+                filterToDelete.name);
+
+            Find.WindowStack.Add(Dialog_MessageBox.CreateConfirmation(
+                confirmation,
+                () =>
+                {
+                    SaveLoader.Delete(filterToDelete);
+                    if (selectedIndex == indexToDelete)
+                        selectedIndex = -1;
+                },
+                true));
+        }
+
+        private void OverwriteSelectedWithConfirmation(int indexToOverwrite, string saveName)
+        {
+            if (indexToOverwrite < 0 || indexToOverwrite >= RandomSettings.pawnFilterList.Count)
+                return;
+
+            string confirmation = string.Format(
+                "RandomPlus.SaveLoadDialog.OverwriteConfirmation".Translate().ToString(),
+                RandomSettings.pawnFilterList[indexToOverwrite].name);
+
+            Find.WindowStack.Add(Dialog_MessageBox.CreateConfirmation(
+                confirmation,
+                () =>
+                {
+                    RandomSettings.PawnFilter.name = saveName;
+                    SaveLoader.SaveOverwrite(indexToOverwrite, RandomSettings.PawnFilter);
+                    Close(true);
+                },
+                true));
         }
 
     }
