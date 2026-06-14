@@ -36,9 +36,16 @@ namespace RandomPlus
         public static int MinSkillRange;
 
         public static int randomRerollCounter = 0;
+        private static int rerollSessionStartTick;
+        private static int rerollSessionElapsedMs;
+        private static bool rerollSessionActive;
+        private static int queuedRerollPawnIndex = -1;
+        private static bool queuedRerollStatusDrawn;
+        private static bool queuedRerollRunning;
+        private static bool rerollStatusVisible;
 
-        // Set by RerollUltraFast when the user right-clicks to cancel; consumed by
-        // Patch_RandomizeMethod to break out of its outer retry loop without re-randomizing.
+        // Set when the user cancels at OS level; consumed by Patch_RandomizeMethod
+        // to break out of its outer retry loop without another filtered reroll.
         public static bool RerollCancelledByUser = false;
 
         public static List<PawnFilter> pawnFilterList = new List<PawnFilter>();
@@ -103,7 +110,128 @@ namespace RandomPlus
 
         public static void ResetRerollCounter()
         {
+            ResetRerollStatsOnly();
+            queuedRerollPawnIndex = -1;
+            queuedRerollStatusDrawn = false;
+            queuedRerollRunning = false;
+            rerollStatusVisible = false;
+        }
+
+        private static void ResetRerollStatsOnly()
+        {
             randomRerollCounter = 0;
+            rerollSessionElapsedMs = 0;
+            rerollSessionActive = false;
+        }
+
+        public static void StartRerollTimer()
+        {
+            rerollSessionStartTick = Environment.TickCount;
+            rerollSessionElapsedMs = 0;
+            rerollSessionActive = true;
+        }
+
+        public static void FinishRerollTimer()
+        {
+            if (!rerollSessionActive)
+                return;
+
+            rerollSessionElapsedMs = Math.Max(0, Environment.TickCount - rerollSessionStartTick);
+            rerollSessionActive = false;
+        }
+
+        public static bool IsRerolling()
+        {
+            return rerollSessionActive || rerollStatusVisible;
+        }
+
+        public static void QueueReroll(int pawnIndex)
+        {
+            if (queuedRerollPawnIndex >= 0 || queuedRerollRunning)
+                return;
+
+            RerollCancelledByUser = false;
+            queuedRerollPawnIndex = pawnIndex;
+            queuedRerollStatusDrawn = false;
+            rerollStatusVisible = true;
+        }
+
+        public static void NotifyRerollStatusDrawn()
+        {
+            if (queuedRerollPawnIndex >= 0)
+                queuedRerollStatusDrawn = true;
+        }
+
+        public static void RunQueuedRerollIfReady()
+        {
+            if (queuedRerollPawnIndex < 0 || !queuedRerollStatusDrawn || queuedRerollRunning)
+                return;
+
+            int pawnIndex = queuedRerollPawnIndex;
+            queuedRerollPawnIndex = -1;
+            queuedRerollStatusDrawn = false;
+            queuedRerollRunning = true;
+
+            try
+            {
+                ResetRerollStatsOnly();
+                RerollCancelledByUser = false;
+                rerollStatusVisible = true;
+                StartRerollTimer();
+                ExecuteRerollLoop(pawnIndex);
+            }
+            finally
+            {
+                FinishRerollTimer();
+                queuedRerollRunning = false;
+                rerollStatusVisible = false;
+            }
+
+            TutorSystem.Notify_Event((EventPack)nameof(StartingPawnUtility.RandomizePawn));
+        }
+
+        public static void RunRerollImmediately(int pawnIndex)
+        {
+            ResetRerollCounter();
+            RerollCancelledByUser = false;
+            StartRerollTimer();
+
+            try
+            {
+                ExecuteRerollLoop(pawnIndex);
+            }
+            finally
+            {
+                FinishRerollTimer();
+            }
+
+            TutorSystem.Notify_Event((EventPack)nameof(StartingPawnUtility.RandomizePawn));
+        }
+
+        private static void ExecuteRerollLoop(int pawnIndex)
+        {
+            int num = 0;
+            do
+            {
+                Reroll(pawnIndex);
+                num++;
+            }
+            while (num <= 20
+                && !StartingPawnUtility.WorkTypeRequirementsSatisfied()
+                && !RerollCancelledByUser);
+        }
+
+        public static string GetElapsedRerollTimeText()
+        {
+            int elapsedMs = rerollSessionActive
+                ? Math.Max(0, Environment.TickCount - rerollSessionStartTick)
+                : rerollSessionElapsedMs;
+
+            TimeSpan elapsed = TimeSpan.FromMilliseconds(elapsedMs);
+            if (elapsed.TotalHours > 99)
+                return $"{(int)elapsed.TotalHours:00}:{elapsed.Minutes:00}:{elapsed.Seconds:00}";
+
+            return elapsed.ToString(@"hh\:mm\:ss");
         }
 
         public static void Reroll(int pawnIndex)
@@ -126,6 +254,12 @@ namespace RandomPlus
                 {
                     if (CheckPawnIsSatisfied(pawn))
                         break;
+
+                    if (ShouldCancelReroll(out var cancellationReason))
+                    {
+                        CancelRerollWithUnfilteredPawn(ref pawn, cancellationReason);
+                        break;
+                    }
 
                     SpouseRelationUtility.Notify_PawnRegenerated(pawn);
                     pawn = StartingPawnUtility.RandomizeInPlace(pawn);
@@ -159,6 +293,12 @@ namespace RandomPlus
                 {
                     randomRerollCounter++;
 
+                    if ((randomRerollCounter & 0x3F) == 0 && ShouldCancelReroll(out var cancellationReason))
+                    {
+                        CancelRerollWithUnfilteredPawn(ref pawn, cancellationReason);
+                        break;
+                    }
+
                     PawnGenerator.RedressPawn(pawn, request);
 
                     // RimWorld 1.6: Safer age generation with null checks
@@ -181,6 +321,8 @@ namespace RandomPlus
                     pawn.skills = new Pawn_SkillTracker(pawn);
 
                     PawnBioAndNameGenerator.GiveAppropriateBioAndNameTo(pawn, faction2.def, request, xenotype);
+                    if (!CheckBackstoriesIsSatisfied(pawn))
+                        continue;
                     
                     // RimWorld 1.6: Safe method invocation with null checks
                     randomTraitMethodInfo?.Invoke(null, new object[] { pawn, request });
@@ -266,6 +408,8 @@ namespace RandomPlus
                 return false;
             if (!CheckTraitsIsSatisfied(pawn))
                 return false;
+            if (!CheckBackstoriesIsSatisfied(pawn))
+                return false;
             if (!CheckHealthIsSatisfied(pawn))
                 return false;
             if (!CheckWorkIsSatisfied(pawn))
@@ -340,7 +484,7 @@ namespace RandomPlus
                 for (int i = 0; i < skillList.Count; i++)
                 {
                     var skill = skillList[i];
-                    if (PawnFilter.countOnlyHighestAttack)
+                    if (pawnFilter.countOnlyHighestAttack)
                     {
                         if (i == 0) // Shooting[i=0] Melee[i=1]
                         {
@@ -350,7 +494,7 @@ namespace RandomPlus
                             continue;
                         }
                     }
-                    if (PawnFilter.countOnlyPassion)
+                    if (pawnFilter.countOnlyPassion)
                     {
                         if (skill.passion > 0)
                             skillTotalCounter += skill.Level;
@@ -415,6 +559,11 @@ namespace RandomPlus
             return true;
         }
 
+        public static bool CheckBackstoriesIsSatisfied(Pawn pawn)
+        {
+            return pawnFilter.AreBackstoriesAllowed(pawn);
+        }
+
         private static bool IsGeneAffectedHealth(Hediff hediff)
         {
             if (!ModsConfig.BiotechActive)
@@ -424,6 +573,87 @@ namespace RandomPlus
                 return true;
 
             return false;
+        }
+
+        private static bool IsStartConditionHealth(Hediff hediff)
+        {
+            var def = hediff.def;
+            return def == cryptosleepSicknessDef || def == malnutritionDef;
+        }
+
+        private static HediffComp_GetsPermanent GetPermanentComp(Hediff hediff)
+        {
+            if (hediff is HediffWithComps hediffWithComps)
+                return hediffWithComps.GetComp<HediffComp_GetsPermanent>();
+            return null;
+        }
+
+        private static bool IsPermanentInjuryHealth(Hediff hediff)
+        {
+            HediffComp_GetsPermanent permanentComp = GetPermanentComp(hediff);
+            return permanentComp != null && permanentComp.IsPermanent;
+        }
+
+        private static bool IsScarHealth(Hediff hediff)
+        {
+            HediffComp_GetsPermanent permanentComp = GetPermanentComp(hediff);
+            if (permanentComp == null || !permanentComp.IsPermanent)
+                return false;
+
+            HediffCompProperties_GetsPermanent props = permanentComp.Props;
+            return ContainsScarLabel(props?.permanentLabel)
+                || ContainsScarLabel(props?.instantlyPermanentLabel)
+                || ContainsScarLabel(hediff.LabelBase)
+                || ContainsScarLabel(hediff.Label);
+        }
+
+        private static bool ContainsScarLabel(string label)
+        {
+            return !string.IsNullOrEmpty(label)
+                && label.IndexOf("scar", StringComparison.OrdinalIgnoreCase) >= 0;
+        }
+
+        private static bool IsBodyModificationHealth(Hediff hediff)
+        {
+            HediffDef def = hediff.def;
+            return hediff is Hediff_Implant
+                || hediff is Hediff_AddedPart
+                || def.countsAsAddedPartOrImplant
+                || def.addedPartProps != null;
+        }
+
+        private static bool IsBadBodyModificationHealth(Hediff hediff)
+        {
+            HediffDef def = hediff.def;
+            if (def.isBad)
+                return true;
+
+            AddedBodyPartProps addedPartProps = def.addedPartProps;
+            return addedPartProps != null
+                && !addedPartProps.betterThanNatural
+                && addedPartProps.partEfficiency > 0f
+                && addedPartProps.partEfficiency < 1f;
+        }
+
+        private static string GetCustomHealthCategoryKey(Hediff hediff)
+        {
+            if (IsStartConditionHealth(hediff))
+                return PawnFilter.CustomHealthStartConditionsKey;
+            if (hediff is Hediff_Pregnant)
+                return PawnFilter.CustomHealthPregnancyKey;
+            if (IsScarHealth(hediff))
+                return PawnFilter.CustomHealthScarKey;
+            if (IsPermanentInjuryHealth(hediff))
+                return PawnFilter.CustomHealthOthersKey;
+            if (hediff is Hediff_Addiction || hediff.def.IsAddiction)
+                return PawnFilter.CustomHealthAddictionKey;
+            if (IsBodyModificationHealth(hediff))
+                return IsBadBodyModificationHealth(hediff)
+                    ? PawnFilter.CustomHealthBadModificationsKey
+                    : PawnFilter.CustomHealthGoodModificationsKey;
+            if (hediff.PainOffset > 0f)
+                return PawnFilter.CustomHealthPainKey;
+            return PawnFilter.CustomHealthOthersKey;
         }
 
         public static bool CheckHealthIsSatisfied(Pawn pawn)
@@ -459,6 +689,15 @@ namespace RandomPlus
                     {
                         var h = hediffs[i];
                         if (h is Hediff_Addiction && !IsGeneAffectedHealth(h))
+                            return false;
+                    }
+                    break;
+                case PawnFilter.HealthOptions.Custom:
+                    for (int i = 0; i < count; i++)
+                    {
+                        var h = hediffs[i];
+                        if (!IsGeneAffectedHealth(h) &&
+                            !pawnFilter.CustomHealthAllows(GetCustomHealthCategoryKey(h)))
                             return false;
                     }
                     break;
@@ -499,6 +738,10 @@ namespace RandomPlus
                     break;
                 case PawnFilter.IncapableOptions.ForcedViolence:
                     if ((disabled & WorkTags.Violent) == WorkTags.Violent)
+                        return false;
+                    break;
+                case PawnFilter.IncapableOptions.Custom:
+                    if (!pawnFilter.CustomIncapableAllows(disabled))
                         return false;
                     break;
             }
@@ -603,18 +846,90 @@ namespace RandomPlus
 
         #region Ultra Fast Algorithm
 
-        // === Right-click cancellation ===
+        // === OS-level cancellation ===
         // The reroll loop blocks the main thread, so Unity's Input class never updates.
-        // GetAsyncKeyState reads OS-level key state directly, so it works mid-loop.
+        // User32 reads OS-level key/focus state directly, so it works mid-loop.
         // Windows-only; on other platforms the P/Invoke fails and cancellation is disabled.
         [DllImport("user32.dll")]
         private static extern short GetAsyncKeyState(int vKey);
-        private const int VK_RBUTTON = 0x02;
+        [DllImport("user32.dll")]
+        private static extern IntPtr GetForegroundWindow();
+        [DllImport("user32.dll")]
+        private static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint processId);
 
-        private static bool IsRightMouseDown()
+        private const int VK_RBUTTON = 0x02;
+        private const int VK_ESCAPE = 0x1B;
+
+        private static bool IsKeyDown(int virtualKey)
         {
-            try { return (GetAsyncKeyState(VK_RBUTTON) & 0x8000) != 0; }
+            try { return (GetAsyncKeyState(virtualKey) & 0x8000) != 0; }
             catch { return false; }
+        }
+
+        private static bool IsAnotherProcessForeground()
+        {
+            try
+            {
+                IntPtr foregroundWindow = GetForegroundWindow();
+                if (foregroundWindow == IntPtr.Zero)
+                    return false;
+
+                GetWindowThreadProcessId(foregroundWindow, out uint foregroundProcessId);
+                return foregroundProcessId != 0 &&
+                    foregroundProcessId != (uint)System.Diagnostics.Process.GetCurrentProcess().Id;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        private static bool ShouldCancelReroll(out string reason)
+        {
+            if (IsKeyDown(VK_ESCAPE))
+            {
+                reason = "Escape";
+                return true;
+            }
+
+            if (IsKeyDown(VK_RBUTTON))
+            {
+                reason = "right-click";
+                return true;
+            }
+
+            if (IsAnotherProcessForeground())
+            {
+                reason = "focus lost";
+                return true;
+            }
+
+            reason = null;
+            return false;
+        }
+
+        private static void MarkRerollCancelled(string reason)
+        {
+            RerollCancelledByUser = true;
+            Log.Message($"RandomPlus: Reroll cancelled ({reason}).");
+        }
+
+        private static void CancelRerollWithUnfilteredPawn(ref Pawn pawn, string reason)
+        {
+            MarkRerollCancelled(reason);
+
+            try
+            {
+                if (pawn == null)
+                    return;
+
+                SpouseRelationUtility.Notify_PawnRegenerated(pawn);
+                pawn = StartingPawnUtility.RandomizeInPlace(pawn);
+            }
+            catch (Exception ex)
+            {
+                Log.Warning($"RandomPlus: Failed to generate unfiltered pawn after cancellation: {ex.Message}");
+            }
         }
 
         private static Action<Pawn, PawnGenerationRequest> CreateFastDelegate(MethodInfo method)
@@ -647,6 +962,237 @@ namespace RandomPlus
             }
         }
 
+        private static bool BackstorySelectionAllowsNonShuffleable(BackstorySlot slot, HashSet<string> allowedDefNames)
+        {
+            if (allowedDefNames == null || allowedDefNames.Count == 0)
+                return false;
+
+            foreach (BackstoryDef backstory in DefDatabase<BackstoryDef>.AllDefsListForReading)
+            {
+                if (backstory == null ||
+                    backstory.slot != slot ||
+                    !allowedDefNames.Contains(backstory.defName))
+                    continue;
+
+                if (!backstory.shuffleable)
+                    return true;
+            }
+
+            return false;
+        }
+
+        private static void AddBackstoryFilterCategories(HashSet<string> categories, IEnumerable<BackstoryCategoryFilter> filters, BackstorySlot slot)
+        {
+            if (categories == null || filters == null)
+                return;
+
+            foreach (BackstoryCategoryFilter filter in filters)
+            {
+                if (filter == null)
+                    continue;
+
+                AddBackstoryCategories(categories, filter.categories);
+                if (slot == BackstorySlot.Childhood)
+                    AddBackstoryCategories(categories, filter.categoriesChildhood);
+                else if (slot == BackstorySlot.Adulthood)
+                    AddBackstoryCategories(categories, filter.categoriesAdulthood);
+            }
+        }
+
+        private static void AddBackstoryCategories(HashSet<string> categories, IEnumerable<string> categoryList)
+        {
+            if (categories == null || categoryList == null)
+                return;
+
+            foreach (string category in categoryList)
+            {
+                if (!string.IsNullOrEmpty(category))
+                    categories.Add(category);
+            }
+        }
+
+        private static HashSet<string> GetRequestBackstoryCategories(PawnGenerationRequest request, FactionDef factionDef, BackstorySlot slot)
+        {
+            var categories = new HashSet<string>();
+
+            try
+            {
+                AddBackstoryFilterCategories(categories, request.KindDef?.backstoryFiltersOverride, slot);
+                AddBackstoryFilterCategories(categories, request.KindDef?.backstoryFilters, slot);
+                AddBackstoryFilterCategories(categories, request.Faction?.def?.backstoryFilters, slot);
+
+                if (categories.Count == 0)
+                    AddBackstoryFilterCategories(categories, factionDef?.backstoryFilters, slot);
+            }
+            catch
+            {
+                return null;
+            }
+
+            return categories.Count > 0 ? categories : null;
+        }
+
+        private static bool BackstoryMatchesCategories(BackstoryDef backstory, HashSet<string> categories)
+        {
+            if (categories == null || categories.Count == 0)
+                return true;
+            if (backstory?.spawnCategories == null || backstory.spawnCategories.Count == 0)
+                return true;
+
+            foreach (string category in backstory.spawnCategories)
+            {
+                if (!string.IsNullOrEmpty(category) && categories.Contains(category))
+                    return true;
+            }
+
+            return false;
+        }
+
+        private static bool BackstoryBlocksRequiredTrait(BackstoryDef backstory, TraitDef[] requiredTraitDefs)
+        {
+            if (backstory?.disallowedTraits == null || backstory.disallowedTraits.Count == 0 ||
+                requiredTraitDefs == null || requiredTraitDefs.Length == 0)
+                return false;
+
+            foreach (var disallowedTrait in backstory.disallowedTraits)
+            {
+                for (int i = 0; i < requiredTraitDefs.Length; i++)
+                {
+                    if (disallowedTrait.def == requiredTraitDefs[i])
+                        return true;
+                }
+            }
+
+            return false;
+        }
+
+        private static bool BackstoryForcesTrait(BackstoryDef backstory, TraitDef traitDef, int degree)
+        {
+            if (backstory?.forcedTraits == null || backstory.forcedTraits.Count == 0 || traitDef == null)
+                return false;
+
+            foreach (var forcedTrait in backstory.forcedTraits)
+            {
+                if (forcedTrait.def == traitDef && forcedTrait.degree == degree)
+                    return true;
+            }
+
+            return false;
+        }
+
+        private static bool BackstoryForcesAnyTrait(
+            BackstoryDef backstory,
+            TraitDef[] traitDefs,
+            int[] traitDegrees)
+        {
+            if (traitDefs == null || traitDegrees == null || traitDefs.Length == 0)
+                return false;
+
+            for (int i = 0; i < traitDefs.Length; i++)
+            {
+                if (BackstoryForcesTrait(backstory, traitDefs[i], traitDegrees[i]))
+                    return true;
+            }
+
+            return false;
+        }
+
+        private static bool BackstoryPoolAlwaysForcesTrait(BackstoryDef[] pool, TraitDef traitDef, int degree)
+        {
+            if (pool == null || pool.Length == 0)
+                return false;
+
+            for (int i = 0; i < pool.Length; i++)
+            {
+                if (!BackstoryForcesTrait(pool[i], traitDef, degree))
+                    return false;
+            }
+
+            return true;
+        }
+
+        private static bool BackstoryPoolsGuaranteeTrait(
+            BackstoryDef[] childPool,
+            BackstoryDef[] adultPool,
+            TraitDef traitDef,
+            int degree)
+        {
+            return BackstoryPoolAlwaysForcesTrait(childPool, traitDef, degree) ||
+                   BackstoryPoolAlwaysForcesTrait(adultPool, traitDef, degree);
+        }
+
+        private static bool BackstoryAllowsWorkFilter(
+            BackstoryDef backstory,
+            PawnFilter.IncapableOptions incapableOption,
+            WorkTags customDisallowedIncapableTags)
+        {
+            WorkTags disabled = backstory?.workDisables ?? WorkTags.None;
+            switch (incapableOption)
+            {
+                case PawnFilter.IncapableOptions.AllowAll:
+                    return true;
+                case PawnFilter.IncapableOptions.NoDumbLabor:
+                    return (disabled & WorkTags.ManualDumb) != WorkTags.ManualDumb;
+                case PawnFilter.IncapableOptions.AllowNone:
+                    return disabled == WorkTags.None;
+                case PawnFilter.IncapableOptions.ForcedViolence:
+                    return (disabled & WorkTags.Violent) != WorkTags.Violent;
+                case PawnFilter.IncapableOptions.Custom:
+                    return (disabled & customDisallowedIncapableTags) == WorkTags.None;
+                default:
+                    return true;
+            }
+        }
+
+        private static BackstoryDef[] BuildDirectBackstoryPool(
+            BackstorySlot slot,
+            bool hasBackstoryFilter,
+            HashSet<string> allowedDefNames,
+            HashSet<string> relevantCategories,
+            TraitDef[] requiredTraitDefs,
+            TraitDef[] excludedTraitDefs,
+            int[] excludedTraitDegrees,
+            PawnFilter.IncapableOptions incapableOption,
+            WorkTags customDisallowedIncapableTags)
+        {
+            var list = new List<BackstoryDef>();
+
+            foreach (BackstoryDef backstory in DefDatabase<BackstoryDef>.AllDefsListForReading)
+            {
+                if (backstory == null || backstory.slot != slot)
+                    continue;
+
+                if (hasBackstoryFilter)
+                {
+                    if (allowedDefNames == null || !allowedDefNames.Contains(backstory.defName))
+                        continue;
+                }
+                else if (!backstory.shuffleable)
+                {
+                    continue;
+                }
+
+                if (!backstory.shuffleable && string.IsNullOrEmpty(backstory.identifier))
+                    continue;
+
+                if (!hasBackstoryFilter && !BackstoryMatchesCategories(backstory, relevantCategories))
+                    continue;
+
+                if (BackstoryBlocksRequiredTrait(backstory, requiredTraitDefs))
+                    continue;
+
+                if (BackstoryForcesAnyTrait(backstory, excludedTraitDefs, excludedTraitDegrees))
+                    continue;
+
+                if (!BackstoryAllowsWorkFilter(backstory, incapableOption, customDisallowedIncapableTags))
+                    continue;
+
+                list.Add(backstory);
+            }
+
+            return list.ToArray();
+        }
+
         private static void RerollUltraFast(Pawn pawn)
         {
             int pawnIdx = StartingPawnUtility.PawnIndex(pawn);
@@ -666,10 +1212,24 @@ namespace RandomPlus
             int ageMax = pawnFilter.ageRange.max;
             Gender requiredGender = pawnFilter.Gender;
             var incapableOption = pawnFilter.FilterIncapable;
+            WorkTags customDisallowedIncapableTags = incapableOption == PawnFilter.IncapableOptions.Custom
+                ? pawnFilter.GetCustomDisallowedIncapableWorkTags()
+                : WorkTags.None;
 
             bool hasAgeFilter = ageMin != PawnFilter.MinAgeDefault || ageMax != PawnFilter.MaxAgeDefault;
             bool hasGenderFilter = requiredGender != Gender.None;
             bool hasWorkFilter = incapableOption != PawnFilter.IncapableOptions.AllowAll;
+            bool hasChildhoodBackstoryFilter = pawnFilter.HasBackstoryFilter(BackstorySlot.Childhood);
+            bool hasAdulthoodBackstoryFilter = pawnFilter.HasBackstoryFilter(BackstorySlot.Adulthood);
+            HashSet<string> allowedChildhoodBackstories = hasChildhoodBackstoryFilter
+                ? new HashSet<string>(pawnFilter.AllowedChildhoodBackstoryDefNames)
+                : null;
+            HashSet<string> allowedAdulthoodBackstories = hasAdulthoodBackstoryFilter
+                ? new HashSet<string>(pawnFilter.AllowedAdulthoodBackstoryDefNames)
+                : null;
+            bool requiresSolidBackstory =
+                BackstorySelectionAllowsNonShuffleable(BackstorySlot.Childhood, allowedChildhoodBackstories) ||
+                BackstorySelectionAllowsNonShuffleable(BackstorySlot.Adulthood, allowedAdulthoodBackstories);
 
             // === Pre-cache trait filters as TraitDef+Degree arrays ===
             // Avoids: iterator allocation from yield-return property, HasTrait closure allocation,
@@ -783,66 +1343,90 @@ namespace RandomPlus
 
             try
             {
-                var childList = new List<BackstoryDef>();
-                var adultList = new List<BackstoryDef>();
+                HashSet<string> childhoodCategories = GetRequestBackstoryCategories(request, faction2.def, BackstorySlot.Childhood);
+                HashSet<string> adulthoodCategories = GetRequestBackstoryCategories(request, faction2.def, BackstorySlot.Adulthood);
 
-                // Build faction category set for matching
-                var factionCategories = new HashSet<string>();
-                if (faction2.def.backstoryFilters != null)
+                childPool = BuildDirectBackstoryPool(
+                    BackstorySlot.Childhood,
+                    hasChildhoodBackstoryFilter,
+                    allowedChildhoodBackstories,
+                    childhoodCategories,
+                    reqTraitDefs,
+                    exclTraitDefs,
+                    exclTraitDegrees,
+                    incapableOption,
+                    customDisallowedIncapableTags);
+
+                adultPool = BuildDirectBackstoryPool(
+                    BackstorySlot.Adulthood,
+                    hasAdulthoodBackstoryFilter,
+                    allowedAdulthoodBackstories,
+                    adulthoodCategories,
+                    reqTraitDefs,
+                    exclTraitDefs,
+                    exclTraitDegrees,
+                    incapableOption,
+                    customDisallowedIncapableTags);
+
+                if ((hasChildhoodBackstoryFilter && childPool.Length == 0) ||
+                    (hasAdulthoodBackstoryFilter && adultPool.Length == 0))
                 {
-                    foreach (var filter in faction2.def.backstoryFilters)
-                    {
-                        if (filter.categories != null)
-                            foreach (var cat in filter.categories)
-                                factionCategories.Add(cat);
-                    }
+                    CancelRerollWithUnfilteredPawn(ref pawn, "incompatible backstory filters");
+                    return;
                 }
 
-                foreach (var bs in DefDatabase<BackstoryDef>.AllDefsListForReading)
+                useDirectBackstory = childPool.Length > 0 && adultPool.Length > 0;
+            }
+            catch (Exception ex)
+            {
+                Log.Warning($"RandomPlus: Failed to build direct backstory pools: {ex.Message}");
+                if (hasChildhoodBackstoryFilter || hasAdulthoodBackstoryFilter)
                 {
-                    if (!bs.shuffleable) continue;
-
-                    // Category match: backstory must share at least one category with faction
-                    if (factionCategories.Count > 0 && bs.spawnCategories != null)
-                    {
-                        bool match = false;
-                        foreach (var cat in bs.spawnCategories)
-                        {
-                            if (factionCategories.Contains(cat)) { match = true; break; }
-                        }
-                        if (!match) continue;
-                    }
-
-                    // Pre-filter: exclude backstories that disallow any required trait
-                    if (hasTraitFilter && reqTraitDefs != null && reqTraitDefs.Length > 0
-                        && bs.disallowedTraits != null && bs.disallowedTraits.Count > 0)
-                    {
-                        bool blocks = false;
-                        foreach (var dt in bs.disallowedTraits)
-                        {
-                            for (int r = 0; r < reqTraitDefs.Length; r++)
-                            {
-                                if (dt.def == reqTraitDefs[r]) { blocks = true; break; }
-                            }
-                            if (blocks) break;
-                        }
-                        if (blocks) continue;
-                    }
-
-                    if (bs.slot == BackstorySlot.Childhood)
-                        childList.Add(bs);
-                    else if (bs.slot == BackstorySlot.Adulthood)
-                        adultList.Add(bs);
-                }
-
-                if (childList.Count > 0 && adultList.Count > 0)
-                {
-                    childPool = childList.ToArray();
-                    adultPool = adultList.ToArray();
-                    useDirectBackstory = true;
+                    CancelRerollWithUnfilteredPawn(ref pawn, "backstory pool error");
+                    return;
                 }
             }
-            catch { }
+
+            int traitPoolSelectionCount = 0;
+            bool verifyFullTraitFilterAfterCandidate = false;
+            if (hasTraitFilter)
+            {
+                traitPoolSelectionCount = poolTraitDefs.Length + reqTraitDefs.Length + exclTraitDefs.Length;
+
+                if (useDirectBackstory && reqTraitDefs.Length > 0)
+                {
+                    var remainingReqDefs = new List<TraitDef>(reqTraitDefs.Length);
+                    var remainingReqDegrees = new List<int>(reqTraitDefs.Length);
+
+                    for (int i = 0; i < reqTraitDefs.Length; i++)
+                    {
+                        if (BackstoryPoolsGuaranteeTrait(childPool, adultPool, reqTraitDefs[i], reqTraitDegrees[i]))
+                        {
+                            verifyFullTraitFilterAfterCandidate = true;
+                            continue;
+                        }
+
+                        remainingReqDefs.Add(reqTraitDefs[i]);
+                        remainingReqDegrees.Add(reqTraitDegrees[i]);
+                    }
+
+                    if (remainingReqDefs.Count != reqTraitDefs.Length)
+                    {
+                        reqTraitDefs = remainingReqDefs.ToArray();
+                        reqTraitDegrees = remainingReqDegrees.ToArray();
+                    }
+                }
+            }
+
+            bool hasRuntimeRequiredTraits = hasTraitFilter && reqTraitDefs.Length > 0;
+            bool hasExcludedTraits = hasTraitFilter && exclTraitDefs.Length > 0;
+            bool hasOptionalTraitPool = hasTraitFilter && poolRequired > 0 &&
+                poolRequired <= traitPoolSelectionCount;
+
+            bool fixedChildBackstory = useDirectBackstory && childPool.Length == 1;
+            bool fixedAdultBackstory = useDirectBackstory && adultPool.Length == 1;
+            BackstoryDef fixedChildhood = fixedChildBackstory ? childPool[0] : null;
+            BackstoryDef fixedAdulthood = fixedAdultBackstory ? adultPool[0] : null;
 
             // === Pre-detect scenario-forced traits ===
             // If no scenario part can add traits post-generation, we can skip the full
@@ -869,8 +1453,10 @@ namespace RandomPlus
             // === Main reroll loop ===
             // Activate name-skip + solid-bio-skip Harmony patches for the hot loop (fallback path)
             Patch_SkipNameGeneration.active = true;
+            Patch_SkipSolidBio.active = !requiresSolidBackstory;
             bool winnerFound = false;
             bool cancelledByUser = false;
+            string cancellationReason = null;
             try
             {
                 while (randomRerollCounter < rerollLimit)
@@ -879,8 +1465,8 @@ namespace RandomPlus
                     {
                         randomRerollCounter++;
 
-                        // Right-click cancel poll (every 1024 iterations, ~negligible overhead)
-                        if ((randomRerollCounter & 0x3FF) == 0 && IsRightMouseDown())
+                        // OS-level cancel poll (every 64 iterations, negligible overhead)
+                        if ((randomRerollCounter & 0x3F) == 0 && ShouldCancelReroll(out cancellationReason))
                         {
                             cancelledByUser = true;
                             break;
@@ -919,13 +1505,30 @@ namespace RandomPlus
                         {
                             // Direct backstory from pre-filtered pools (~1μs vs ~200-300μs)
                             // Pools already exclude backstories that disallow required traits
-                            pawn.story.Childhood = childPool[Rand.Range(0, childPool.Length)];
-                            pawn.story.Adulthood = adultPool[Rand.Range(0, adultPool.Length)];
+                            pawn.story.Childhood = fixedChildBackstory
+                                ? fixedChildhood
+                                : childPool[Rand.Range(0, childPool.Length)];
+                            pawn.story.Adulthood = fixedAdultBackstory
+                                ? fixedAdulthood
+                                : adultPool[Rand.Range(0, adultPool.Length)];
                         }
                         else
                         {
                             // Fallback: full backstory generation (name/bio skip patches active)
                             PawnBioAndNameGenerator.GiveAppropriateBioAndNameTo(pawn, faction2.def, request, xenotype);
+
+                            if (hasChildhoodBackstoryFilter)
+                            {
+                                var childhood = pawn.story.Childhood;
+                                if (childhood == null || !allowedChildhoodBackstories.Contains(childhood.defName))
+                                    continue;
+                            }
+                            if (hasAdulthoodBackstoryFilter)
+                            {
+                                var adulthood = pawn.story.Adulthood;
+                                if (adulthood == null || !allowedAdulthoodBackstories.Contains(adulthood.defName))
+                                    continue;
+                            }
 
                             // Backstory disallowed-trait pre-check
                             if (hasTraitFilter && reqTraitDefs.Length > 0)
@@ -976,24 +1579,27 @@ namespace RandomPlus
                             bool traitFail = false;
 
                             // Required traits
-                            for (int r = 0; r < reqTraitDefs.Length; r++)
+                            if (hasRuntimeRequiredTraits)
                             {
-                                bool found = false;
-                                for (int t = 0; t < allTraits.Count; t++)
+                                for (int r = 0; r < reqTraitDefs.Length; r++)
                                 {
-                                    if (allTraits[t] != null &&
-                                        allTraits[t].def == reqTraitDefs[r] &&
-                                        allTraits[t].Degree == reqTraitDegrees[r])
+                                    bool found = false;
+                                    for (int t = 0; t < allTraits.Count; t++)
                                     {
-                                        found = true;
-                                        break;
+                                        if (allTraits[t] != null &&
+                                            allTraits[t].def == reqTraitDefs[r] &&
+                                            allTraits[t].Degree == reqTraitDegrees[r])
+                                        {
+                                            found = true;
+                                            break;
+                                        }
                                     }
+                                    if (!found) { traitFail = true; break; }
                                 }
-                                if (!found) { traitFail = true; break; }
                             }
 
                             // Excluded traits
-                            if (!traitFail)
+                            if (!traitFail && hasExcludedTraits)
                             {
                                 for (int e = 0; e < exclTraitDefs.Length; e++)
                                 {
@@ -1012,8 +1618,7 @@ namespace RandomPlus
                             }
 
                             // Optional trait pool
-                            if (!traitFail && poolRequired > 0 &&
-                                poolRequired <= poolTraitDefs.Length + reqTraitDefs.Length + exclTraitDefs.Length)
+                            if (!traitFail && hasOptionalTraitPool)
                             {
                                 int poolMatches = 0;
                                 for (int p = 0; p < poolTraitDefs.Length; p++)
@@ -1048,6 +1653,9 @@ namespace RandomPlus
                                 continue;
                             if (incapableOption == PawnFilter.IncapableOptions.ForcedViolence &&
                                 (disabledTags & WorkTags.Violent) == WorkTags.Violent)
+                                continue;
+                            if (incapableOption == PawnFilter.IncapableOptions.Custom &&
+                                (disabledTags & customDisallowedIncapableTags) != WorkTags.None)
                                 continue;
                         }
 
@@ -1136,7 +1744,11 @@ namespace RandomPlus
                         // Notify scenario — only re-check when scenario parts can add forced traits,
                         // which is the only thing that could invalidate our inline checks above.
                         Find.Scenario.Notify_PawnGenerated(pawn, request.Context, true);
-                        if (scenarioForcesTraits && !CheckPawnIsSatisfied(pawn))
+                        if ((hasChildhoodBackstoryFilter || hasAdulthoodBackstoryFilter) &&
+                            !CheckBackstoriesIsSatisfied(pawn))
+                            continue;
+                        if ((scenarioForcesTraits || verifyFullTraitFilterAfterCandidate) &&
+                            !CheckPawnIsSatisfied(pawn))
                             continue;
 
                         // --- Winner: finalize ---
@@ -1177,6 +1789,7 @@ namespace RandomPlus
             finally
             {
                 Patch_SkipNameGeneration.active = false;
+                Patch_SkipSolidBio.active = false;
 
                 // Defensive finalization for cancel / limit-reached exits.
                 // Pawn may have dummy name (from name-skip patch) and lack body/genes/style
@@ -1198,8 +1811,7 @@ namespace RandomPlus
 
                         if (cancelledByUser)
                         {
-                            RerollCancelledByUser = true;
-                            Log.Message("RandomPlus: Reroll cancelled by user (right-click).");
+                            CancelRerollWithUnfilteredPawn(ref pawn, cancellationReason);
                         }
                     }
                     catch (Exception ex)
